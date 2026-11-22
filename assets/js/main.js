@@ -234,53 +234,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-      /* --- NUMBER COUNTER ANIMATION --- */
+      /* --- NUMBER COUNTER ANIMATION (final numbers are in the HTML, so they show even without JS) --- */
       const counters = document.querySelectorAll('.counter');
-      const counterObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const target = +entry.target.getAttribute('data-target');
-            const duration = 2000; 
-            const increment = target / (duration / 16);
-            let current = 0;
-            
-            const updateCounter = () => {
-              current += increment;
-              if (current < target) {
-                entry.target.innerText = Math.ceil(current);
-                requestAnimationFrame(updateCounter);
-              } else {
-                entry.target.innerText = target;
-              }
+      if ('IntersectionObserver' in window && !motionDisabled) {
+        const counterObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target, target = +el.getAttribute('data-target'), t0 = performance.now(), dur = 1600;
+            const tick = now => {
+              const p = Math.min(1, (now - t0) / dur);
+              el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+              if (p < 1) requestAnimationFrame(tick);
             };
-            updateCounter();
-            observer.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.5 });
-      
-      counters.forEach(counter => counterObserver.observe(counter));
+            requestAnimationFrame(tick);
+            observer.unobserve(el);
+          });
+        }, { threshold: 0.5 });
+        counters.forEach(counter => { counter.textContent = '0'; counterObserver.observe(counter); });
+      }
 
-      /* --- PINCODE CHECKER LOGIC --- */
+      
+/* --- PINCODE CHECKER LOGIC --- */
       const pinBtn = document.getElementById('pincode-btn');
       const pinInput = document.getElementById('pincode-input');
       const pinResult = document.getElementById('pincode-result');
-      
-      if(pinBtn && pinInput && pinResult) {
-        const activePincodes = ['192303', '192304', '192305'];
+      // EDIT THIS LIST: pincodes where Sparkl currently runs last-mile delivery.
+      const ACTIVE_PINCODES = ['192303', '192304', '192305'];
 
+      if (pinBtn && pinInput && pinResult) {
+        pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pinBtn.click(); } });
         pinBtn.addEventListener('click', () => {
+          if (pinBtn.disabled) return;
           const pin = pinInput.value.replace(/\D/g, '');
-          if(!/^\d{6}$/.test(pin)) {
+          if (!/^\d{6}$/.test(pin)) {
             pinResult.style.color = 'var(--warn)';
             pinResult.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Please enter a valid 6-digit pin code.';
             return;
           }
-          
+          pinBtn.disabled = true;
           pinBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-          
           setTimeout(() => {
-            if(activePincodes.includes(pin)) {
+            if (ACTIVE_PINCODES.includes(pin)) {
               pinResult.style.color = 'var(--ok)';
               pinResult.innerHTML = '<i class="fa-solid fa-circle-check"></i> Standard & Express delivery active in this sector.';
             } else {
@@ -288,77 +282,85 @@ document.addEventListener('DOMContentLoaded', function() {
               pinResult.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Out of active range. Only bulk B2B freight drops available here.';
             }
             pinBtn.innerHTML = 'Verify';
+            pinBtn.disabled = false;
           }, 600);
         });
       }
 
-      /* --- API TRACKING LOGIC --- */
+      
+/* --- UNIFIED TRACKING: one search box for Sparkl tracking numbers (and partner AWBs when enabled on the Worker) --- */
       const trackBtn = document.getElementById('track-btn');
       const trackingInput = document.getElementById('tracking-input');
       const resultContainer = document.getElementById('tracking-result');
 
-      if(trackBtn && trackingInput && resultContainer) {
+      if (trackBtn && trackingInput && resultContainer) {
+        const STEPS = ['Picked up', 'At hub', 'In transit', 'Out for delivery', 'Delivered'];
+        const HINT = 'Your tracking number is on your booking confirmation or the parcel label.';
+        const hintEl = document.getElementById('track-hint');
         const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        trackingInput.addEventListener('keydown', e => { if (e.key === 'Enter') trackBtn.click(); });
-        if (pinInput) pinInput.addEventListener('keydown', e => { if (e.key === 'Enter' && pinBtn) pinBtn.click(); });
-        trackBtn.addEventListener('click', async function() {
-          const trackingNumber = trackingInput.value.trim().toUpperCase();
+        const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const CLOSE = '<button type="button" class="tr-close" data-clear>New search</button>';
+        let seq = 0;
 
-          if (!trackingNumber) {
-            const hint = document.getElementById('track-hint');
-            if (hint) { hint.textContent = 'Please enter a waybill, AWB or order ID.'; hint.classList.add('is-error'); }
-            trackingInput.focus(); trackingInput.setAttribute('aria-invalid', 'true');
-            return;
-          }
+        const setHint = (text, isError) => { if (hintEl) { hintEl.textContent = text; hintEl.classList.toggle('is-error', !!isError); } };
+        const show = html => { resultContainer.style.display = 'block'; resultContainer.innerHTML = html; };
+        const message = (text, kind) => show('<p class="tr-msg ' + (kind || '') + '">' + text + '</p>' + (kind ? '<div class="tr-actions">' + CLOSE + '</div>' : ''));
 
-          trackBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i> Querying...';
-          resultContainer.style.display = 'block';
-          resultContainer.innerHTML = '<div style="text-align: center; padding: 25px;"><i class="fa-solid fa-satellite-dish fa-beat"></i> Querying regional infrastructure...</div>';
+        function clearResult(focus) {
+          seq++;
+          resultContainer.style.display = 'none';
+          resultContainer.innerHTML = '';
+          trackingInput.value = '';
+          trackingInput.removeAttribute('aria-invalid');
+          trackBtn.disabled = false; trackBtn.textContent = 'Track Order';
+          setHint(HINT, false);
+          try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+          if (focus) trackingInput.focus({ preventScroll: true });
+        }
 
+        function render(d) {
+          const i = STEPS.findIndex(s => s.toLowerCase() === String(d.status || '').trim().toLowerCase());
+          const done = i === STEPS.length - 1;
+          const steps = i >= 0 ? '<div class="tr-steps' + (done ? ' done' : '') + '">' + STEPS.map((s, k) => '<div class="tr-st' + (k <= i ? ' on' : '') + '">' + s + '</div>').join('') + '</div>' : '';
+          const cells = [['From', d.origin], ['To', d.destination], ['Current location', d.location], ['ETA', d.eta], ['Carrier', d.partner]]
+            .filter(c => c[1]).map(c => '<div><div class="tr-lbl">' + c[0] + '</div>' + esc(c[1]) + '</div>').join('');
+          const events = (d.events || []).map(e => '<li><strong>' + esc(e.status) + (e.location ? ' · ' + esc(e.location) : '') + '</strong><span>' + esc(e.time) + (e.note ? ' — ' + esc(e.note) : '') + '</span></li>').join('');
+          show('<div class="tr-top"><div><div class="tr-lbl">Tracking no.</div><div class="tr-id">' + esc(d.id) + '</div></div><span class="tr-pill' + (done ? ' done' : '') + '">' + esc(d.status || 'In transit') + '</span></div>' +
+            steps + (cells ? '<div class="tr-grid">' + cells + '</div>' : '') +
+            (events ? '<div class="tr-lbl">History</div><ul class="tr-list">' + events + '</ul>' : '') +
+            '<div class="tr-actions">' + CLOSE + '</div>');
+          resultContainer.scrollIntoView({ behavior: motionDisabled ? 'auto' : 'smooth', block: 'nearest' });
+        }
+
+        async function run(raw) {
+          const id = norm(raw), n = ++seq;
+          if (!id) { setHint('Please enter your tracking number.', true); trackingInput.focus(); trackingInput.setAttribute('aria-invalid', 'true'); return; }
+          trackBtn.disabled = true; trackBtn.textContent = 'Searching…';
+          show('<p class="tr-msg">Searching…</p>');
           try {
-            const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 10000);
-            const response = await fetch(`https://track.sparkllogistics.in/?awb=${encodeURIComponent(trackingNumber)}`, { signal: ctrl.signal }); clearTimeout(to);
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.error || 'Tracking footprint not found.');
-            }
-
-            let timelineHTML = '<ul style="list-style: none; padding: 0; margin-top: 20px; border-left: 2px solid var(--accent-primary); margin-left: 12px;">';
-            if (data.timeline && Array.isArray(data.timeline)) {
-              data.timeline.forEach(item => {
-                timelineHTML += `
-                  <li style="position: relative; padding-left: 25px; margin-bottom: 12px; font-size: 1.05rem;">
-                    <div style="position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; background: var(--accent-primary); border-radius: 50%; box-shadow: 0 0 10px rgba(244,123,32,0.5);"></div>
-                    <strong style="color: #D9D2C3;">${esc(item.time)}:</strong> ${esc(item.event)}
-                  </li>`;
-              });
-            }
-            timelineHTML += '</ul>';
-
-            resultContainer.innerHTML = `
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-                <h4 style="margin: 0; color: var(--accent-primary); font-size: 1.45rem;"><i class="fa-solid fa-box-open" style="margin-right: 12px;"></i>${esc(data.awb_number || trackingNumber)}</h4>
-                <span style="background: rgba(255,255,255,0.1); padding: 6px 18px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; letter-spacing: 1px;">${esc(data.network_partner || 'Sparkl Regional')}</span>
-              </div>
-              <p style="margin-bottom: 10px; font-size: 1.15rem;"><strong style="color: #9A958A;">Logistics Status:</strong> <span style="color: #8DC63F; font-weight: 700;">${esc(data.status || 'In Transit')}</span></p>
-              <p style="margin-bottom: 10px; font-size: 1.15rem;"><strong style="color: #9A958A;">Current Node:</strong> ${esc(data.location || 'Processing Center')}</p>
-              <p style="margin-bottom: 20px; font-size: 1.15rem;"><strong style="color: #9A958A;">Estimated Delivery:</strong> ${esc(data.estimated_delivery || 'Standard Dispatch Timelines')}</p>
-              ${timelineHTML}
-            `;
-
-          } catch (error) {
-            resultContainer.innerHTML = `
-              <div style="color: #F47B20; padding: 15px; background: rgba(244,123,32, 0.1); border-radius: 12px; border: 1px solid rgba(244,123,32, 0.2); font-weight: 500; font-size: 1.1rem;">
-                <i class="fa-solid fa-triangle-exclamation" style="margin-right: 10px;"></i> Could not securely fetch live routing details. Please verify your AWB node.
-              </div>`;
+            const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 12000);
+            const r = await fetch('/api/track?id=' + encodeURIComponent(id), { signal: ctrl.signal }); clearTimeout(to);
+            if (n !== seq) return;
+            if (r.ok) { render(await r.json()); try { history.replaceState(null, '', '#' + id); } catch (e) {} }
+            else if (r.status === 404 || r.status === 400) message('We couldn’t find that tracking number. Please check it and try again.', 'err');
+            else message('Tracking is temporarily unavailable. Please try again in a minute.', 'err');
+          } catch (e) {
+            if (n === seq) message(e.name === 'AbortError' ? 'The request timed out. Please try again.' : 'Network problem. Check your connection and try again.', 'err');
           } finally {
-            trackBtn.innerHTML = 'Track Order';
+            if (n === seq) { trackBtn.disabled = false; trackBtn.textContent = 'Track Order'; }
           }
-        });
+        }
+
+        trackBtn.addEventListener('click', () => run(trackingInput.value));
+        trackingInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); trackBtn.click(); } });
+        resultContainer.addEventListener('click', e => { if (e.target.closest('[data-clear]')) clearResult(true); });
+        const fromHash = () => { const h = decodeURIComponent((location.hash || '').slice(1)); if (/^SPK[\s-]?\d/i.test(h)) { trackingInput.value = h; run(h); } };
+        window.addEventListener('hashchange', fromHash);
+        fromHash();
       }
+
       
-      /* --- v28 UX ADDITIONS --- */
+/* --- v28 UX ADDITIONS --- */
       const store = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
 
       // Announcement bar dismiss
@@ -383,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         trackInputEl.removeAttribute('aria-invalid');
         if (trackHintEl && trackHintEl.classList.contains('is-error')) {
           trackHintEl.classList.remove('is-error');
-          trackHintEl.textContent = 'Your AWB is on the shipping confirmation or the parcel label.';
+          trackHintEl.textContent = 'Your tracking number is on your booking confirmation or the parcel label.';
         }
       });
       const pinEl = document.getElementById('pincode-input');
