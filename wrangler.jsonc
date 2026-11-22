@@ -1,5 +1,5 @@
 {
-  "name": "sparkl-tracker",
+  "name": "sparkl-site",
   "main": "src/worker.js",
   "compatibility_date": "2026-11-01",
   "keep_vars": true,
