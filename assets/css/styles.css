@@ -1202,3 +1202,65 @@ html[data-theme="dark"] .brand-mark{background:var(--ivory);color:var(--onyx)}
 .nf{min-height:80vh;display:grid;place-content:center;justify-items:center;gap:20px;text-align:center;padding:40px 24px;background:var(--onyx);color:var(--ivory)}
 .nf .mark{height:84px;fill:var(--ivory)}
 .nf p{color:var(--mist);max-width:44ch}
+
+/* --- Header typeface: Plus Jakarta Sans (as on Blogger) --- */
+.brand-header,.brand-header *{font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif}
+.brand-header .fa-solid{font-family:'Font Awesome 6 Free'}
+.brand-title{gap:3px}
+.brand-name{font-size:clamp(1.05rem,2vw,1.35rem);font-weight:800;line-height:1.1;letter-spacing:-.5px;color:var(--text-main)}
+.brand-title p{font-weight:800}
+
+/* --- Layout fixes: overlaps and padding --- */
+.brand-header{gap:16px}
+.brand-logo-area{min-width:0;flex-shrink:1}
+.brand-title{min-width:0}
+.live-indicator{margin:0 4px 0 6px;flex-shrink:0}
+.live-indicator::after{animation-name:livePulseSm}
+@keyframes livePulseSm{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+.alert-content{gap:10px}
+.ticker{padding-left:4px}
+
+/* Logo stays left-aligned and never stretches in flex columns */
+.footer-brand svg{align-self:flex-start;margin-bottom:22px}
+
+/* Fleet emblem ring is attached to the circle itself */
+.fleet-visual-wrapper::before{content:none}
+.fleet-visual::before{content:'';position:absolute;inset:-14px;border-radius:50%;z-index:-1;pointer-events:none;
+  background:conic-gradient(from 0deg,transparent,rgba(244,123,32,.9),transparent 40%);animation:rotateRing 3.5s linear infinite}
+.fleet-visual-wrapper{align-items:center;padding:24px}
+
+/* Apply button copy aligned and wrapping cleanly */
+.fleet-apply-btn{text-align:left;max-width:100%}
+.fleet-apply-copy{flex:1 1 auto;align-items:flex-start;text-align:left}
+.fleet-apply-copy small{line-height:1.3}
+
+/* Tighter, even card + section padding */
+.card-liquid{padding:clamp(32px,4vw,48px) clamp(26px,3.5vw,42px)}
+.card-icon{margin-bottom:clamp(22px,3vw,30px)}
+.card-grid{gap:clamp(20px,3vw,36px)}
+.services-wrapper{margin:clamp(24px,3vw,40px) auto clamp(28px,4vw,48px)}
+.pincode-container{padding:clamp(40px,6vw,72px) clamp(22px,5vw,56px)}
+.pincode-container p{margin-bottom:34px}
+.fleet-content{padding:clamp(40px,6vw,80px) clamp(24px,5vw,72px)}
+.fleet-text h2{margin-bottom:18px}
+.fleet-text p{margin-bottom:28px}
+.fleet-perks-inline{margin-bottom:32px;gap:12px}
+.fleet-perks-inline li{padding:12px 20px}
+.footer-cta{padding:clamp(48px,7vw,84px) clamp(24px,6vw,64px)}
+.footer-cta p{margin-bottom:34px}
+.footer-grid{padding-bottom:56px;gap:clamp(32px,5vw,64px)}
+.footer-col h2{margin-bottom:22px}
+.footer-col ul li{margin-bottom:16px}
+.footer-col .contact-link{overflow-wrap:anywhere}
+
+@media (max-width:768px){
+  .track-bar{border:0!important;padding:0!important;background:none!important;box-shadow:none!important;gap:0}
+  .track-bar input{margin-bottom:12px}
+  .fleet-content{padding:44px 22px 52px;gap:32px}
+  .fleet-visual-wrapper{margin-top:8px;padding:20px}
+  .footer-cta{margin:0 16px}
+  .footer-grid{grid-template-columns:1fr;padding-left:24px;padding-right:24px}
+}
+@media (max-width:950px){.footer-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:768px){.footer-grid{grid-template-columns:1fr}}
+.fleet-visual::before{-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 15px),#000 calc(100% - 14px));mask:radial-gradient(farthest-side,transparent calc(100% - 15px),#000 calc(100% - 14px))}
