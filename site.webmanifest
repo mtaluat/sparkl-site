@@ -1,0 +1,16 @@
+{
+  "name": "Sparkl Warehousing & Logistics",
+  "short_name": "Sparkl",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0B0B0C",
+  "background_color": "#F5F0E6",
+  "icons": [
+    {
+      "src": "/assets/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
