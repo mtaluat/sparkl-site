@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileOverlay.classList.toggle('active', isOpen);
         mobileBtn?.setAttribute('aria-expanded', String(isOpen));
         document.body.style.overflow = isOpen ? 'hidden' : '';
+        if (isOpen && mobileCloseBtn) mobileCloseBtn.focus({ preventScroll: true });
       }
 
       if(mobileBtn) mobileBtn.addEventListener('click', toggleMobileMenu);
@@ -148,41 +149,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
 
-      /* --- ENHANCED DYNAMIC 3D CARDS (DESKTOP ONLY) --- */
-      const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      
-      if(!isTouchDevice && window.innerWidth > 1024) {
-        const cards = document.querySelectorAll('.card-liquid');
-        cards.forEach(card => {
-          let rafId = 0;
-          let latestEvent = null;
-          const updateCard = () => {
-            rafId = 0;
-            if (!latestEvent) return;
-            const rect = card.getBoundingClientRect();
-            const x = latestEvent.clientX - rect.left;
-            const y = latestEvent.clientY - rect.top;
-            card.style.setProperty('--mouse-x', `${x}px`);
-            card.style.setProperty('--mouse-y', `${y}px`);
-            
-            // Doubled the rotation impact bounds for deeper 3D pop
-            const rotateX = ((y - rect.height / 2) / (rect.height / 2)) * -4;
-            const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 4;
-            
-            card.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`;
-          };
-          card.addEventListener('mousemove', e => {
-            card.classList.add('is-tilting');
-            latestEvent = e;
-            if (!rafId) rafId = requestAnimationFrame(updateCard);
+      /* --- CARD SPOTLIGHT (pointer devices) --- */
+      if (window.matchMedia('(hover: hover)').matches) {
+        document.querySelectorAll('.card-liquid').forEach(card => {
+          card.addEventListener('pointermove', e => {
+            const r = card.getBoundingClientRect();
+            card.style.setProperty('--mouse-x', (e.clientX - r.left) + 'px');
+            card.style.setProperty('--mouse-y', (e.clientY - r.top) + 'px');
           }, { passive: true });
-          card.addEventListener('mouseleave', () => {
-            latestEvent = null;
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = 0;
-            card.style.transform = '';
-            card.classList.remove('is-tilting');
-          });
         });
       }
 
@@ -240,32 +214,40 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       
-/* --- UNIFIED TRACKING: one search box for Sparkl tracking numbers (and partner AWBs when enabled on the Worker) --- */
+/* --- UNIFIED TRACKING: one search box, served by /api/track on the same Worker --- */
       const trackBtn = document.getElementById('track-btn');
       const trackingInput = document.getElementById('tracking-input');
       const resultContainer = document.getElementById('tracking-result');
 
       if (trackBtn && trackingInput && resultContainer) {
+        const API = '/api/track';
         const STEPS = ['Picked up', 'At hub', 'In transit', 'Out for delivery', 'Delivered'];
         const HINT = 'Your tracking number is on your booking confirmation or the parcel label.';
         const hintEl = document.getElementById('track-hint');
+        const recentEl = document.getElementById('recent-searches');
         const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const CLOSE = '<button type="button" class="tr-close" data-clear>New search</button>';
-        let seq = 0;
+        const CLOSE = '<button type="button" class="tr-close" data-clear><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> New search</button>';
+        let seq = 0, ctrl = null;
 
+        const store = {
+          get() { try { return JSON.parse(localStorage.getItem('sparklRecent') || '[]'); } catch (e) { return []; } },
+          add(id) { try { localStorage.setItem('sparklRecent', JSON.stringify([id].concat(this.get().filter(x => x !== id)).slice(0, 3))); } catch (e) {} }
+        };
+        function drawRecent() {
+          if (!recentEl) return;
+          recentEl.innerHTML = store.get().map(id => '<button type="button" data-id="' + esc(id) + '">' + esc(id) + '</button>').join('');
+        }
         const setHint = (text, isError) => { if (hintEl) { hintEl.textContent = text; hintEl.classList.toggle('is-error', !!isError); } };
         const show = html => { resultContainer.style.display = 'block'; resultContainer.innerHTML = html; };
         const message = (text, kind) => show('<p class="tr-msg ' + (kind || '') + '">' + text + '</p>' + (kind ? '<div class="tr-actions">' + CLOSE + '</div>' : ''));
+        const setBusy = busy => { trackBtn.disabled = busy; trackBtn.textContent = busy ? 'Searching…' : 'Track Order'; trackBtn.setAttribute('aria-busy', String(busy)); };
 
         function clearResult(focus) {
-          seq++;
-          resultContainer.style.display = 'none';
-          resultContainer.innerHTML = '';
-          trackingInput.value = '';
-          trackingInput.removeAttribute('aria-invalid');
-          trackBtn.disabled = false; trackBtn.textContent = 'Track Order';
-          setHint(HINT, false);
+          seq++; if (ctrl) ctrl.abort();
+          resultContainer.style.display = 'none'; resultContainer.innerHTML = '';
+          trackingInput.value = ''; trackingInput.removeAttribute('aria-invalid');
+          setBusy(false); setHint(HINT, false);
           try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
           if (focus) trackingInput.focus({ preventScroll: true });
         }
@@ -277,42 +259,57 @@ document.addEventListener('DOMContentLoaded', function() {
           const cells = [['From', d.origin], ['To', d.destination], ['Current location', d.location], ['ETA', d.eta], ['Carrier', d.partner]]
             .filter(c => c[1]).map(c => '<div><div class="tr-lbl">' + c[0] + '</div>' + esc(c[1]) + '</div>').join('');
           const events = (d.events || []).map(e => '<li><strong>' + esc(e.status) + (e.location ? ' · ' + esc(e.location) : '') + '</strong><span>' + esc(e.time) + (e.note ? ' — ' + esc(e.note) : '') + '</span></li>').join('');
+          const help = 'mailto:cs@sparkllogistics.in?subject=' + encodeURIComponent('Help with shipment ' + d.id);
           show('<div class="tr-top"><div><div class="tr-lbl">Tracking no.</div><div class="tr-id">' + esc(d.id) + '</div></div><span class="tr-pill' + (done ? ' done' : '') + '">' + esc(d.status || 'In transit') + '</span></div>' +
             steps + (cells ? '<div class="tr-grid">' + cells + '</div>' : '') +
             (events ? '<div class="tr-lbl">History</div><ul class="tr-list">' + events + '</ul>' : '') +
-            '<div class="tr-actions">' + CLOSE + '</div>');
+            '<div class="tr-actions">' + CLOSE +
+            '<button type="button" class="tr-tool" data-copy="' + esc(norm(d.id)) + '"><i class="fa-regular fa-copy" aria-hidden="true"></i> Copy link</button>' +
+            '<a class="tr-tool" href="' + help + '"><i class="fa-regular fa-envelope" aria-hidden="true"></i> Need help?</a></div>');
           resultContainer.scrollIntoView({ behavior: motionDisabled ? 'auto' : 'smooth', block: 'nearest' });
         }
 
         async function run(raw) {
-          const id = norm(raw), n = ++seq;
-          if (!id) { setHint('Please enter your tracking number.', true); trackingInput.focus(); trackingInput.setAttribute('aria-invalid', 'true'); return; }
-          trackBtn.disabled = true; trackBtn.textContent = 'Searching…';
-          show('<p class="tr-msg">Searching…</p>');
+          const id = norm(raw);
+          if (id.length < 6) { setHint('Please enter your full tracking number, e.g. SPK2026000001.', true); trackingInput.focus(); trackingInput.setAttribute('aria-invalid', 'true'); return; }
+          const n = ++seq; if (ctrl) ctrl.abort(); ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 12000);
+          setBusy(true); setHint(HINT, false);
+          show('<p class="tr-msg"><span class="tr-spin" aria-hidden="true"></span>Looking up ' + esc(id) + '…</p>');
           try {
-            const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 12000);
-            const r = await fetch('/api/track?id=' + encodeURIComponent(id), { signal: ctrl.signal }); clearTimeout(to);
+            const r = await fetch(API + '?id=' + encodeURIComponent(id), { signal: ctrl.signal, headers: { Accept: 'application/json' } });
             if (n !== seq) return;
-            if (r.ok) { render(await r.json()); try { history.replaceState(null, '', '#' + id); } catch (e) {} }
-            else if (r.status === 404 || r.status === 400) message('We couldn’t find that tracking number. Please check it and try again.', 'err');
-            else message('Tracking is temporarily unavailable. Please try again in a minute.', 'err');
+            const isJson = (r.headers.get('content-type') || '').includes('json');
+            if (r.ok && isJson) {
+              const d = await r.json(); if (n !== seq) return;
+              render(d); store.add(norm(d.id)); drawRecent();
+              try { history.replaceState(null, '', '#' + norm(d.id)); } catch (e) {}
+            } else if (r.status === 404 || r.status === 400) {
+              message('We couldn’t find that tracking number. Please check it and try again.', 'err');
+            } else {
+              message('Tracking is temporarily unavailable. Please try again in a minute.', 'err');
+            }
           } catch (e) {
             if (n === seq) message(e.name === 'AbortError' ? 'The request timed out. Please try again.' : 'Network problem. Check your connection and try again.', 'err');
           } finally {
-            if (n === seq) { trackBtn.disabled = false; trackBtn.textContent = 'Track Order'; }
+            clearTimeout(timer); if (n === seq) setBusy(false);
           }
         }
 
         trackBtn.addEventListener('click', () => run(trackingInput.value));
-        trackingInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); trackBtn.click(); } });
-        resultContainer.addEventListener('click', e => { if (e.target.closest('[data-clear]')) clearResult(true); });
+        trackingInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(trackingInput.value); } });
+        resultContainer.addEventListener('click', e => {
+          if (e.target.closest('[data-clear]')) return clearResult(true);
+          const cp = e.target.closest('[data-copy]');
+          if (cp && navigator.clipboard) navigator.clipboard.writeText(location.origin + '/#' + cp.getAttribute('data-copy')).then(() => { cp.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Copied'; });
+        });
+        if (recentEl) recentEl.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) { trackingInput.value = b.getAttribute('data-id'); run(b.getAttribute('data-id')); } });
         const fromHash = () => { const h = decodeURIComponent((location.hash || '').slice(1)); if (/^SPK[\s-]?\d/i.test(h)) { trackingInput.value = h; run(h); } };
         window.addEventListener('hashchange', fromHash);
-        fromHash();
+        drawRecent(); fromHash();
       }
 
-      
-/* --- v28 UX ADDITIONS --- */
+      /* --- v28 UX ADDITIONS --- */
       const store = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
 
       // Announcement bar dismiss
