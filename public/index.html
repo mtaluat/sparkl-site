@@ -18,7 +18,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="/assets/js/theme-init.js"></script>
@@ -47,7 +46,7 @@
   <!-- ALERT BANNER -->
   <div class='alert-banner'>
     <div class='alert-content'>
-      <i class='fa-solid fa-bolt' style='color: var(--accent-primary); margin-right: 6px;'></i>
+      <i class='fa-solid fa-bolt alert-icon' aria-hidden='true'></i>
       <span class='pulse-dot'></span>
       <div class='ticker'>
         <div class='ticker-track'>
@@ -61,39 +60,23 @@
 
   <!-- HEADER -->
   <header class='brand-header'>
-    <div class='brand-logo-area'>
-      <a class='brand-logo' href='/' aria-label='Sparkl Warehousing and Logistics LLP – home'>
-        <svg class="mark" viewBox="19.88 170 190.1 223.17" aria-hidden="true" focusable="false"><use href="#sparkl-g"></use></svg>
-      </a>
-      <div class='brand-title'><span class='wordmark'>SPARKL</span><span class='descriptor'>Warehousing And Logistics LLP</span></div>
-    </div>
-
-    <div class='header-right'>
-      <div class='header-details'>
-        <div style='display: flex; align-items: center; justify-content: flex-end; gap: 8px;'>
-           <div class='live-indicator'></div> Network: <span>Active</span>
-        </div>
-        <div>HQ: <span>Shopian</span></div>
-      </div>
-
-      <nav aria-label='Primary' class='header-menu'>
-        <ul>
-          <li><a href='#services'>Services</a></li>
-          <li><a href='#process'>How it works</a></li>
-          <li><a href='#pincode-section'>Coverage</a></li>
-          <li><a href='#faq'>FAQ</a></li>
-          <li><a href='#fleet-section'>Careers</a></li>
-        </ul>
-      </nav>
-
+    <a class='brand-lockup' href='/' id='logo' aria-label='Sparkl Warehousing And Logistics LLP – home'>
+      <svg class="mark" viewBox="19.88 170 190.1 223.17" aria-hidden="true" focusable="false"><use href="#sparkl-g"></use></svg>
+      <span class='brand-text'><span class='wordmark'>SPARKL</span><span class='descriptor'>Warehousing And Logistics LLP</span></span>
+    </a>
+    <nav aria-label='Primary' class='header-menu'>
+      <ul>
+        <li><a href='#services'>Services</a></li>
+        <li><a href='#process'>How it works</a></li>
+        <li><a href='#pincode-section'>Coverage</a></li>
+        <li><a href='#faq'>FAQ</a></li>
+        <li><a href='#fleet-section'>Careers</a></li>
+      </ul>
+    </nav>
+    <div class='header-actions'>
       <a class='header-cta' href='#tracking-input'><i aria-hidden='true' class='fa-solid fa-location-crosshairs'></i> Track</a>
-      <button aria-label='Toggle dark mode' class='theme-toggle-btn' id='theme-toggle' title='Toggle Dark Mode' type='button'>
-        <i class='fa-solid fa-moon'></i>
-      </button>
-
-      <button aria-controls='mobile-drawer' aria-expanded='false' aria-label='Open menu' class='mobile-menu-toggle' id='mobile-menu-btn' title='Open Menu' type='button'>
-        <i class='fa-solid fa-bars-staggered'></i>
-      </button>
+      <button aria-label='Toggle dark mode' class='theme-toggle-btn' id='theme-toggle' title='Toggle dark mode' type='button'><i class='fa-solid fa-moon'></i></button>
+      <button aria-controls='mobile-drawer' aria-expanded='false' aria-label='Open menu' class='mobile-menu-toggle' id='mobile-menu-btn' title='Open menu' type='button'><i class='fa-solid fa-bars-staggered'></i></button>
     </div>
   </header>
 
@@ -101,7 +84,7 @@
   <div class='mobile-overlay' id='mobile-overlay'></div>
   <div class='mobile-drawer' id='mobile-drawer'>
     <div class='mobile-drawer-header'>
-      <span style='font-weight: 800; font-size: 1.1rem; color: var(--text-main); letter-spacing: 1px; text-transform: uppercase;'>Menu</span>
+      <span class='drawer-title'>Menu</span>
       <button aria-label='Close menu' class='mobile-drawer-close' id='mobile-close-btn' type='button'><i class='fa-solid fa-xmark'></i></button>
     </div>
     <ul class='mobile-drawer-menu'>
@@ -139,6 +122,7 @@
         <button class='btn-premium-solid' id='track-btn' type='button'>Track Order</button>
       </div>
       <div class='track-hint stagger-4' id='track-hint' role='status'>Your tracking number is on your booking confirmation or the parcel label.</div>
+      <div class='recent stagger-4' id='recent-searches' aria-label='Recent searches'></div>
       <div aria-live='polite' class='stagger-4' id='tracking-result'></div>
     </div>
   </div>
@@ -280,7 +264,7 @@
       <h2>Scale your regional distribution.</h2>
       <p>Partner with Sparkl Warehousing and Logistics LLP to effortlessly dominate the supply chain across Kashmir through our unified API network.</p>
       <div class='footer-cta-actions'>
-        <a class='btn-premium-solid' href='mailto:enterprise@sparkllogistics.in?subject=Partnership%20Enquiry' style='background: #fff; color: #1B1C1F; box-shadow: 0 20px 50px rgba(0,0,0,0.25); border-radius: 50px;'>Become a Partner</a>
+        <a class='btn-light' href='mailto:enterprise@sparkllogistics.in?subject=Partnership%20Enquiry'>Become a Partner</a>
         <a class='btn-ghost' href='#tracking-input'><i aria-hidden='true' class='fa-solid fa-location-crosshairs'></i> Track a shipment</a>
       </div>
     </div>
@@ -288,10 +272,10 @@
     <div class='footer-grid'>
       <div class='footer-col footer-brand reveal'>
         <div class='footer-lockup'>
-          <svg class="mark" viewBox="19.88 170 190.1 223.17" aria-hidden="true" focusable="false"><use href="#sparkl-g"></use></svg>
+          <span class='footer-badge'><svg class="mark" viewBox="19.88 170 190.1 223.17" aria-hidden="true" focusable="false"><use href="#sparkl-g"></use></svg></span>
           <div><span class='wordmark'>SPARKL</span><span class='descriptor'>Warehousing And Logistics LLP</span></div>
         </div>
-        <p style='font-weight: 500; font-size: 1.05rem; line-height: 1.7; opacity: 0.85;'>Empowering local commerce through advanced regional infrastructure and comprehensive 4-pillar delivery solutions.</p>
+        <p>Empowering local commerce through advanced regional infrastructure and comprehensive 4-pillar delivery solutions.</p>
       </div>
       <div class='footer-col reveal'>
         <h2>Core Services</h2>
@@ -313,19 +297,10 @@
       </div>
       <div class='footer-col reveal'>
         <h2>Corporate Contacts</h2>
-        <ul style='list-style: none; padding: 0;'>
-          <li style='margin-bottom: 25px; display: flex; gap: 18px; align-items: flex-start;'>
-            <i class='fa-solid fa-map-location-dot' style='color: var(--accent-primary); font-size: 1.35rem; margin-top: 2px;'></i>
-            <span style='font-weight: 700; font-size: 1.1rem;'>Shopian (HQ), Jammu &amp; Kashmir</span>
-          </li>
-          <li style='margin-bottom: 25px; display: flex; gap: 18px; align-items: center;'>
-            <i class='fa-solid fa-envelope-open-text' style='color: var(--accent-primary); font-size: 1.25rem;'></i>
-            <a class='contact-link' href='mailto:enterprise@sparkllogistics.in' style='font-weight: 600; font-size: 1.1rem;'>enterprise@sparkllogistics.in</a>
-          </li>
-          <li style='margin-bottom: 25px; display: flex; gap: 18px; align-items: center;'>
-            <i class='fa-solid fa-headset' style='color: var(--accent-primary); font-size: 1.25rem;'></i>
-            <a class='contact-link' href='mailto:cs@sparkllogistics.in' style='font-weight: 600; font-size: 1.1rem;'>cs@sparkllogistics.in</a>
-          </li>
+        <ul class='contact-list'>
+          <li><i class='fa-solid fa-map-location-dot' aria-hidden='true'></i><span>Shopian (HQ), Jammu &amp; Kashmir</span></li>
+          <li><i class='fa-solid fa-envelope-open-text' aria-hidden='true'></i><a class='contact-link' href='mailto:enterprise@sparkllogistics.in'>enterprise@sparkllogistics.in</a></li>
+          <li><i class='fa-solid fa-headset' aria-hidden='true'></i><a class='contact-link' href='mailto:cs@sparkllogistics.in'>cs@sparkllogistics.in</a></li>
         </ul>
       </div>
     </div>
