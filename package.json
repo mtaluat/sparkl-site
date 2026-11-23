@@ -1,0 +1,8 @@
+{
+  "name": "sparkl-site",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": { "deploy": "wrangler deploy" },
+  "devDependencies": { "wrangler": "^4" }
+}
