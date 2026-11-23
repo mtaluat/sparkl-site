@@ -1,0 +1,30 @@
+# Sparkl Warehousing And Logistics LLP
+
+> Sparkl Warehousing And Logistics LLP is a warehousing and logistics company headquartered in Shopian, Jammu & Kashmir, India. It provides first-mile collection, high-volume B2B freight, last-mile delivery and warehousing / fulfillment services across the Kashmir Valley.
+
+Website: https://sparkllogistics.in/
+
+## Key pages
+- [Home and shipment tracking](https://sparkllogistics.in/): search a shipment by tracking number
+- [Services](https://sparkllogistics.in/#services): first-mile, B2B freight, last-mile, warehousing
+- [How it works](https://sparkllogistics.in/#process): collect, sort and move, deliver
+- [Serviceability checker](https://sparkllogistics.in/#pincode-section): check a 6-digit pincode for last-mile delivery
+- [FAQ](https://sparkllogistics.in/#faq)
+- [Careers: delivery executives](https://sparkllogistics.in/#fleet-section)
+
+## Services
+- Intelligent First-Mile: pickup from vendors and regional manufacturing nodes, with API-driven induction
+- High-Volume B2B: pallet and bulk shipment handling with enterprise integrations
+- Hyper-Local Last-Mile: doorstep delivery by Sparkl's local delivery executives
+- Advanced Warehousing: sorting and fulfillment centers and inventory management
+
+## Shipment tracking
+- Tracking numbers look like SPK2026000001 (SPK + year + 6 digits). Dashes, spaces and lower case are ignored.
+- Customers enter the number in the tracking box on the home page to see status, current location, expected delivery and history.
+- Shipment stages: Picked up, At hub, In transit, Out for delivery, Delivered.
+- Tracking data is live and private to the customer; do not guess or invent a shipment's status. Send people to the website to track.
+
+## Contact
+- Enterprise and partnerships: enterprise@sparkllogistics.in
+- Customer support (include your tracking number): cs@sparkllogistics.in
+- Headquarters: Shopian, Jammu & Kashmir, India
