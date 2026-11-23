@@ -50,8 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(fragment);
       }
       function buildAllSparkles() {
-        buildSparkles('sparkles-container', 38, 16);
-        buildSparkles('footer-sparkles-container', 26, 12);
+        buildSparkles('sparkles-container', 22, 10);
+        buildSparkles('footer-sparkles-container', 14, 8);
       }
       buildAllSparkles();
 
@@ -114,61 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
           const maxScroll = Math.max(1, doc.scrollHeight - window.innerHeight);
           doc.style.setProperty('--page-progress', Math.min(1, y / maxScroll).toFixed(4));
           if (header) header.classList.toggle('is-scrolled', y > 24);
-          if (hero) {
-            const heroHeight = Math.max(1, hero.offsetHeight);
-            const progress = Math.min(1, y / heroHeight);
-            hero.style.setProperty('--hero-shift', (progress * -35).toFixed(2));
-            hero.style.setProperty('--hero-fade', progress.toFixed(3));
-          }
-        };
+                  };
         window.addEventListener('scroll', () => {
           if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScrollMotion);
         }, { passive: true });
         updateScrollMotion();
       }
 
-
-      /* --- DEEP 3D POINTER PHYSICS --- */
-      if (!motionDisabled && !('ontouchstart' in window)) {
-        document.querySelectorAll('.fleet-content').forEach(element => {
-          element.classList.add('physics-target');
-          const state = { x: 0, y: 0, tx: 0, ty: 0, active: false, frame: 0 };
-          
-          const animate = () => {
-            // Increased multiplier for snappier, deeper physics response
-            state.x += (state.tx - state.x) * .20;
-            state.y += (state.ty - state.y) * .20;
-            
-            element.style.setProperty('--ry', `${state.x.toFixed(2)}deg`);
-            element.style.setProperty('--rx', `${(-state.y).toFixed(2)}deg`);
-            element.style.setProperty('--px', `${(state.x * .3).toFixed(2)}px`);
-            element.style.setProperty('--py', `${(state.y * .3).toFixed(2)}px`);
-            element.style.setProperty('--gx', `${50 + state.x * 4}%`);
-            element.style.setProperty('--gy', `${50 + state.y * 4}%`);
-            element.style.setProperty('--physics-glow', state.active ? '1' : '0');
-            
-            if (state.active || Math.abs(state.x) > .05 || Math.abs(state.y) > .05) {
-                state.frame = requestAnimationFrame(animate);
-            } else {
-                state.frame = 0;
-            }
-          };
-          
-          element.addEventListener('pointermove', event => {
-            const rect = element.getBoundingClientRect();
-            // Increased division multipliers for more aggressive rotation output
-            state.tx = ((event.clientX - rect.left) / rect.width - .5) * 6; 
-            state.ty = ((event.clientY - rect.top) / rect.height - .5) * 6; 
-            state.active = true;
-            if (!state.frame) state.frame = requestAnimationFrame(animate);
-          }, { passive: true });
-          
-          element.addEventListener('pointerleave', () => {
-            state.tx = 0; state.ty = 0; state.active = false;
-            if (!state.frame) state.frame = requestAnimationFrame(animate);
-          });
-        });
-      }
 
       /* --- DARK MODE LOGIC --- */
       const toggleBtn = document.getElementById('theme-toggle');
