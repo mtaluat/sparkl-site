@@ -63,6 +63,11 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === '/api/track' && request.method === 'GET') return track(request, env);
     if (pathname.startsWith('/api/')) return json({ error: 'Not found' }, 404);
-    return env.ASSETS.fetch(request); // the website (public/)
+    const res = await env.ASSETS.fetch(request); // the website (public/)
+    if (res.status === 404 && request.method === 'GET' && (request.headers.get('accept') || '').includes('text/html')) {
+      const nf = await env.ASSETS.fetch(new Request(new URL('/404', request.url)));
+      if (nf.ok) return new Response(nf.body, { status: 404, headers: nf.headers });
+    }
+    return res;
   }
 };
