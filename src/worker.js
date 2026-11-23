@@ -24,7 +24,7 @@ const load = async u => {
 };
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
   status: s,
-  headers: { 'Content-Type': 'application/json', 'Cache-Control': s === 200 ? 'public, max-age=30' : 'no-store' }
+  headers: { 'Content-Type': 'application/json', 'Cache-Control': s === 200 ? 'public, max-age=30' : 'no-store', 'Access-Control-Allow-Origin': '*' }
 });
 
 async function sparkl(id, env) {
@@ -61,6 +61,8 @@ async function track(request, env) {
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
+    if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': '*' } });
+    if (pathname === '/api/health') return json({ ok: true, shipments_csv: !!env.SHIPMENTS_CSV, events_csv: !!env.EVENTS_CSV, legacy: !!env.LEGACY_TRACK_URL }, 200);
     if (pathname === '/api/track' && request.method === 'GET') return track(request, env);
     if (pathname.startsWith('/api/')) return json({ error: 'Not found' }, 404);
     const res = await env.ASSETS.fetch(request); // the website (public/)
