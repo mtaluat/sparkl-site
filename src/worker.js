@@ -16,6 +16,8 @@ function parseCSV(t) {
   const [h = [], ...b] = rows;
   return b.filter(x => x.some(v => v.trim())).map(x => Object.fromEntries(h.map((k, i) => [k.trim(), (x[i] || '').trim()])));
 }
+const STATUS = { outofdelivery: 'Out for delivery', outfordelivery: 'Out for delivery', pickedup: 'Picked up', athub: 'At hub', intransit: 'In transit', delivered: 'Delivered' };
+const status = s => STATUS[String(s || '').toLowerCase().replace(/[^a-z]/g, '')] || s;
 const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const load = async u => {
   const r = await fetch(u, { cf: { cacheTtl: 30, cacheEverything: true } });
@@ -32,8 +34,8 @@ async function sparkl(id, env) {
   const s = S.find(x => norm(x.tracking_id) === id);
   if (!s) return null;
   const events = E.filter(x => norm(x.tracking_id) === id).reverse()
-    .map(x => ({ time: x.time, status: x.status, location: x.location, note: x.note }));
-  return { id: s.tracking_id, status: s.status, origin: s.origin, destination: s.destination, consignee: s.consignee, eta: s.eta, location: s.current_location, updated: s.updated_at, events };
+    .map(x => ({ time: x.time, status: status(x.status), location: x.location, note: x.note }));
+  return { id: s.tracking_id, status: status(s.status), origin: s.origin, destination: s.destination, consignee: s.consignee, eta: s.eta, location: s.current_location, updated: s.updated_at, events };
 }
 
 async function legacy(awb, env) {
