@@ -431,16 +431,20 @@ if(sp&&!reduce){const n=innerWidth<768?7:14,h=sp.parentElement.offsetHeight||600
 if(matchMedia('(hover: hover)').matches)$$('.card').forEach(c=>c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect();c.style.setProperty('--mx',(e.clientX-r.left)+'px');c.style.setProperty('--my',(e.clientY-r.top)+'px')},{passive:true}));
 
 /* serviceability */
-const PINCODES=['192303','192304','192305']; /* EDIT: pincodes with active last-mile delivery */
+const PINCODES=['192303','192304','192305']; /* offline fallback only; real coverage comes from the Coverage tab via /api/coverage */
 const pb=$('#pin-btn'),pi=$('#pin-input'),pr=$('#pin-res');
 pi.addEventListener('input',()=>{pi.value=pi.value.replace(/\D/g,'').slice(0,6)});
 pi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();pb.click()}});
 pb.addEventListener('click',()=>{if(pb.disabled)return;const p=pi.value;pr.className='';
  if(!/^\d{6}$/.test(p)){pr.className='no';pr.textContent='Please enter a valid 6-digit pincode.';return}
  pb.disabled=true;pb.textContent='Checking…';
- setTimeout(()=>{const ok=PINCODES.includes(p);pr.className=ok?'ok':'no';
-  pr.textContent=ok?'Great news: Standard & Express delivery is active in your area.':'Outside our active last-mile range. Bulk B2B freight drops may still be available.';
-  pb.disabled=false;pb.textContent='Verify'},450)});
+ const t0=Date.now();
+ fetch('/api/coverage?pin='+p,{headers:{Accept:'application/json'}})
+  .then(r=>{if(!r.ok||(r.headers.get('content-type')||'').indexOf('json')<0)throw 0;return r.json()})
+  .catch(()=>({pin:p,covered:PINCODES.indexOf(p)>-1,area:'',service:'Standard & Express'}))
+  .then(d=>setTimeout(()=>{const ok=!!d.covered;pr.className=ok?'ok':'no';
+   pr.textContent=ok?'Great news: '+(d.service||'Standard & Express')+' delivery is active'+(d.area?' in '+d.area:' in your area')+' ('+p+').':'Outside our active last-mile range. Bulk B2B freight drops may still be available.';
+   pb.disabled=false;pb.textContent='Verify'},Math.max(0,350-(Date.now()-t0))))});
 
 /* tracking */
 const btn=$('#track-btn'),inp=$('#tracking-input'),out=$('#result'),hint=$('#hint'),rec=$('#recent');
