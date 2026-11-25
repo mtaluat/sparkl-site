@@ -38,6 +38,20 @@ async function sparkl(id, env) {
   return { id: s.tracking_id, status: status(s.status), origin: s.origin, destination: s.destination, consignee: s.consignee, eta: s.eta, location: s.current_location, updated: s.updated_at, events };
 }
 
+// Pincode coverage. Source: the "Coverage" sheet tab (published CSV in COVERAGE_CSV: pincode, area, service, active).
+// Until COVERAGE_CSV is set, this built-in list is used.
+const DEFAULT_PINS = ['192303', '192304', '192305'];
+async function coverage(request, env) {
+  const pin = String(new URL(request.url).searchParams.get('pin') || '').replace(/\D/g, '');
+  if (!/^\d{6}$/.test(pin)) return json({ error: 'Invalid pincode' }, 400);
+  try {
+    if (!env.COVERAGE_CSV) { const c = DEFAULT_PINS.includes(pin); return json({ pin, covered: c, area: '', service: c ? 'Standard & Express' : '' }); }
+    const row = (await load(env.COVERAGE_CSV)).find(x => String(x.pincode || '').replace(/\D/g, '') === pin);
+    const on = !!row && !/^(no|n|false|0|inactive|off)$/i.test(String(row.active || 'yes').trim());
+    return json({ pin, covered: on, area: on ? row.area || '' : '', service: on ? row.service || 'Standard & Express' : '' });
+  } catch (e) { return json({ error: 'Coverage unavailable' }, 502); }
+}
+
 async function legacy(awb, env) {
   if (!env.LEGACY_TRACK_URL) return null;
   try {
@@ -64,8 +78,9 @@ export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
     if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': '*' } });
-    if (pathname === '/api/health') return json({ ok: true, shipments_csv: !!env.SHIPMENTS_CSV, events_csv: !!env.EVENTS_CSV, legacy: !!env.LEGACY_TRACK_URL }, 200);
+    if (pathname === '/api/health') return json({ ok: true, shipments_csv: !!env.SHIPMENTS_CSV, events_csv: !!env.EVENTS_CSV, legacy: !!env.LEGACY_TRACK_URL, coverage_csv: !!env.COVERAGE_CSV }, 200);
     if (pathname === '/api/track' && request.method === 'GET') return track(request, env);
+    if (pathname === '/api/coverage' && request.method === 'GET') return coverage(request, env);
     if (pathname.startsWith('/api/')) return json({ error: 'Not found' }, 404);
     const res = await env.ASSETS.fetch(request); // the website (public/)
     if (res.status === 404 && request.method === 'GET' && (request.headers.get('accept') || '').includes('text/html')) {
