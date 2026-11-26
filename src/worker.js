@@ -19,10 +19,24 @@ function parseCSV(t) {
 const STATUS = { outofdelivery: 'Out for delivery', outfordelivery: 'Out for delivery', pickedup: 'Picked up', athub: 'At hub', intransit: 'In transit', delivered: 'Delivered' };
 const status = s => STATUS[String(s || '').toLowerCase().replace(/[^a-z]/g, '')] || s;
 const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+// Accepts the web-page link by mistake too: .../pubhtml?gid=1 becomes .../pub?gid=1&output=csv
+const csvUrl = u => {
+  u = String(u || '').trim();
+  try {
+    const x = new URL(u);
+    if (x.hostname === 'docs.google.com') {
+      x.pathname = x.pathname.replace(/\/pubhtml$/, '/pub');
+      if (/\/pub$/.test(x.pathname)) x.searchParams.set('output', 'csv');
+    }
+    return x.toString();
+  } catch (e) { return u; }
+};
 const load = async u => {
-  const r = await fetch(u, { cf: { cacheTtl: 30, cacheEverything: true } });
+  const r = await fetch(csvUrl(u), { cf: { cacheTtl: 30, cacheEverything: true } });
   if (!r.ok) throw new Error('csv ' + r.status);
-  return parseCSV(await r.text());
+  const t = await r.text();
+  if (/^\s*</.test(t)) throw new Error('not csv (got a web page)');
+  return parseCSV(t);
 };
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
   status: s,
@@ -46,7 +60,9 @@ async function coverage(request, env) {
   if (!/^\d{6}$/.test(pin)) return json({ error: 'Invalid pincode' }, 400);
   try {
     if (!env.COVERAGE_CSV) { const c = DEFAULT_PINS.includes(pin); return json({ pin, covered: c, area: '', service: c ? 'Standard & Express' : '' }); }
-    const row = (await load(env.COVERAGE_CSV)).find(x => String(x.pincode || '').replace(/\D/g, '') === pin);
+    const rows = await load(env.COVERAGE_CSV);
+    if (rows.length && !('pincode' in rows[0])) return json({ error: 'Coverage source has no pincode column' }, 502);
+    const row = rows.find(x => String(x.pincode || '').replace(/\D/g, '') === pin);
     const on = !!row && !/^(no|n|false|0|inactive|off)$/i.test(String(row.active || 'yes').trim());
     return json({ pin, covered: on, area: on ? row.area || '' : '', service: on ? row.service || 'Standard & Express' : '' });
   } catch (e) { return json({ error: 'Coverage unavailable' }, 502); }
@@ -78,7 +94,14 @@ export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
     if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': '*' } });
-    if (pathname === '/api/health') return json({ ok: true, shipments_csv: !!env.SHIPMENTS_CSV, events_csv: !!env.EVENTS_CSV, legacy: !!env.LEGACY_TRACK_URL, coverage_csv: !!env.COVERAGE_CSV }, 200);
+    if (pathname === '/api/health') {
+      const o = { ok: true, shipments_csv: !!env.SHIPMENTS_CSV, events_csv: !!env.EVENTS_CSV, legacy: !!env.LEGACY_TRACK_URL, coverage_csv: !!env.COVERAGE_CSV };
+      if (new URL(request.url).searchParams.get('deep')) { // ?deep=1 reports row counts and column names only, never the data
+        const probe = async u => { if (!u) return { error: 'not set' }; try { const r = await load(u); return { rows: r.length, columns: Object.keys(r[0] || {}) }; } catch (e) { return { error: String(e.message || e) }; } };
+        o.deep = { shipments: await probe(env.SHIPMENTS_CSV), events: await probe(env.EVENTS_CSV), coverage: await probe(env.COVERAGE_CSV) };
+      }
+      return json(o, 200);
+    }
     if (pathname === '/api/track' && request.method === 'GET') return track(request, env);
     if (pathname === '/api/coverage' && request.method === 'GET') return coverage(request, env);
     if (pathname.startsWith('/api/')) return json({ error: 'Not found' }, 404);
